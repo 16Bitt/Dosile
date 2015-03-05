@@ -6,7 +6,7 @@ all: bootsector
 
 floppy.img:
 	dd if=/dev/zero of=floppy.img bs=1k count=1440
-	/sbin/mkdosfs -n DOSILE floppy.img
+	/sbin/mkdosfs -F 16 -s 2 -n DOSILE floppy.img
 
 bootsector: floppy.img $(SOURCES)
 	dd conv=notrunc if=boot.bin of=floppy.img bs=1 seek=64 count=448
