@@ -42,4 +42,6 @@
 %define BYTE_SIZE	28
 %define DIR_SIZE	32
 
+%define EXTENDED_DIR	0x0F
+
 %endif
