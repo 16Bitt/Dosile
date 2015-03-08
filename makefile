@@ -19,4 +19,4 @@ clean:
 	nasm $(ASFLAGS) $< -o $@
 
 run: all
-	qemu-system-i386 -fda floppy.img -net none -monitor stdio
+	qemu-system-x86_64 -display sdl -fda floppy.img -net none 

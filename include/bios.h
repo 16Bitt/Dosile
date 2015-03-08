@@ -17,4 +17,8 @@
 %define SCROLLUP	0x06
 %define SCROLLDOWN	0x07
 
+;DISK SERVICES
+%define READSECTOR_B	0x02
+%define WRITESECTOR_B	0x03
+
 %endif
