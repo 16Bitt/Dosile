@@ -1,15 +1,16 @@
 ASFLAGS	= -fbin -Iinclude/
 
-SOURCES	= boot.bin
+SOURCES	= boot.bin payload.bin
 
 all: bootsector
 
 floppy.img:
-	dd if=/dev/zero of=floppy.img bs=1k count=1440
-	/sbin/mkdosfs -F 16 -s 2 floppy.img
+	/sbin/mkdosfs -F 12 -s 2 -C floppy.img 1440
 
 bootsector: floppy.img $(SOURCES)
 	dd conv=notrunc if=boot.bin of=floppy.img bs=1 seek=64 count=448
+	mcopy -o -i floppy.img boot.asm ::/
+	mcopy -o -i floppy.img payload.bin ::/DOSILE.SYS
 
 clean:
 	-rm *.bin
