@@ -95,9 +95,9 @@ KERNELLOAD:
 	XOR CX, CX
 	MOV CL, BYTE [SECTORS_PER_CLUSTER]
 	PUSH AX
+	CALL CLUSTER2LBA
 
 KERNELREADSEC:
-	CALL CLUSTER2LBA
 	CALL READSECTOR
 	ADD BX, 512
 	INC AX
@@ -114,9 +114,8 @@ KERNELREADSEC:
 	SHR AX, 4	;Shift it right if it is
 FINISH:
 	AND AX, 0xFFF	;And always cancel the high nibble
-	PUSH AX
-	CMP AX, 0xFFF	;End of cluster chain?
-	JNE KERNELLOAD
+	CMP AX, 0xFFE	;End of cluster chain?
+	JL KERNELLOAD
 
 	MOV AX, WORD [DIRSTART]	;Our entrypoint
 	JMP AX
