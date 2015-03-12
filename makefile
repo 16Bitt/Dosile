@@ -1,4 +1,5 @@
-ASFLAGS	= -fbin -Iinclude/
+ASFLAGS	= -fbin -Iinclude/ -Icompat/
+
 
 SOURCES	= boot.bin kernel.bin
 
