@@ -19,12 +19,11 @@ ENTRYPOINT:
 	MOV DX, DOSILE_STUB
 	MOV AX, SYS_DOS
 	CALL MAP_INTERRUPT
-	
-	MOV AX, 0x1234
-	MOV BX, 0xBEEF
-	MOV CX, 0xDEAD
-	MOV DX, 0x5678
+
+KEYLOOP:
+	MOV AH, 3
 	INT SYS_DOS
+	JMP KEYLOOP
 
 	CLI
 	HLT
@@ -36,7 +35,7 @@ DOSILE_STUB:
 	PUSH ES
 	PUSH BP
 	MOV BP, SP
-
+	
 	SHR AX, 8
 	SHL AX, 1
 	ADD AX, JMP_TAB
@@ -44,6 +43,7 @@ DOSILE_STUB:
 	MOV AX, [CS:SI]
 	JMP AX
 	
+END_INT:
 	MOV SP, BP
 	POP BP
 	POP ES
@@ -112,6 +112,38 @@ PRINT_WORD:
 	POPA
 	RET
 
+SAVE_OLDSTACK:
+	MOV SI, PSTACKPTR
+	MOV AX, [CS:SI]
+	MOV SI, AX
+	MOV AX, [CS:SI]		;Get the current stack element
+	MOV SI, AX
+	MOV AX, SS		
+	MOV [CS:SI], AX		;Save SS
+	ADD SI, 2
+	MOV AX, SP
+	ADD AX, 2		;Account for the return address
+	MOV [CS:SI], AX		;Save SP
+	MOV SI, PSTACKPTR
+	ADD WORD [CS:SI], 4	;Update the pstack pointer
+	RET
+
+GET_OLDSTACK:
+	MOV SI, PSTACKPTR
+	MOV AX, [CS:SI]
+	MOV SI, AX
+	MOV AX, [CS:SI]		;Get the current stack element
+	MOV SI, AX
+	SUB SI, 2		;Point to SP
+	MOV AX, [CS:SI]
+	MOV SP, AX		;Get SP
+	SUB SI, 2		;Point to SS
+	MOV AX, [CS:SI]
+	MOV SS, AX		;Get SS
+	MOV SI, PSTACKPTR
+	SUB WORD [CS:SI], 4	;Update pstack pointer
+	RET
+
 REGISTER_DUMP:
 	MOV AX, CS
 	MOV ES, AX
@@ -143,12 +175,24 @@ REGISTER_DUMP:
 	CALL PRINT
 	MOV AX, REGISTER_BP
 	CALL PRINT_WORD
+	MOV SI, STR_CS
+	CALL PRINT
+	MOV AX, REGISTER_CS
+	CALL PRINT_WORD
+	MOV SI, STR_IP
+	CALL PRINT
+	MOV AX, REGISTER_IP
+	CALL PRINT_WORD
 	MOV SI, STR_CR
 	CALL PRINT
 	RET
 
 JMP_TAB:
-	TIMES 256 DW BAD_INT_TRAP
+	DW DOS_INT_0
+	DW DOS_INT_1
+	DW DOS_INT_2
+	DW NOT_SUPPORTED_TRAP
+	TIMES 253 DW BAD_INT_TRAP
 
 BAD_INT_TRAP:
 	MOV AX, CS
@@ -159,6 +203,19 @@ BAD_INT_TRAP:
 	CLI
 	HLT
 
+NOT_SUPPORTED_TRAP:
+	MOV AX, CS
+	MOV ES, AX
+	MOV SI, NOT_SUPPORTED
+	CALL PRINT
+	CALL REGISTER_DUMP
+	CLI
+	HLT
+
+;Area for importing outside code
+%include "exec.asm"
+%include "con.asm"
+
 STR_AX:	DB "AX=", 0
 STR_BX:	DB " BX=", 0
 STR_CX:	DB " CX=", 0
@@ -166,9 +223,18 @@ STR_DX: DB " DX=", 0
 STR_SI:	DB " SI=", 0
 STR_DI:	DB " DI=", 0
 STR_BP:	DB " BP=", 0
+STR_CS: DB " EXEC=", 0
+STR_IP:	DB ":", 0
 
 STR_CR:	DB 13, 10, 0
+
+PSTACK:
+	TIMES 20 DW 0
+
+PSTACKPTR:
+	DW PSTACK
 
 PAYLOAD_STRING: DB "Kernel successfully entered.", 13, 10, 0
 INTERRUPT_TEST:	DB "Int 21h test call", 13, 10, 0
 TRAP_STRING:	DB "Fatal: unknown interrupt option caught", 13, 10, 0
+NOT_SUPPORTED:	DB "Unsupported int 21h call caught", 13, 10, 0

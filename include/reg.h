@@ -9,5 +9,7 @@
 %define REGISTER_DX	[SS:BP + 12 + 6]
 %define REGISTER_CX	[SS:BP + 14 + 6]
 %define REGISTER_AX	[SS:BP + 16 + 6]
+%define REGISTER_IP	[SS:BP + 18 + 6]
+%define REGISTER_CS	[SS:BP + 20 + 6]
 
 %endif

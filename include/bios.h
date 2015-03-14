@@ -7,6 +7,8 @@
 ;These are the various services that the bios so lovingly gives us
 %define TEXT_SERVICE	0x10
 %define DISK_SERVICE	0x13
+%define KEYB_SERVICE	0x16
+%define CTRL_BREAK	0x1B
 
 ;TEXT SERVICES
 %define PUTCHAR		0x0E
@@ -20,5 +22,9 @@
 ;DISK SERVICES
 %define READSECTOR_B	0x02
 %define WRITESECTOR_B	0x03
+
+;KEYB SERVICES
+%define READKEY_B	0x00
+%define GETKEY_B	0x01
 
 %endif
