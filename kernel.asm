@@ -29,6 +29,7 @@ ENTRYPOINT:
 	CLI
 	HLT
 
+;All INT 21H calls go here
 DOSILE_STUB:
 	PUSHA
 	PUSH SS
@@ -67,6 +68,7 @@ DONEPRINT:
 	POPA
 	RET
 
+;Puts a long address into the interrupt table
 MAP_INTERRUPT:
 	PUSHA
 	SHL AX, 2
@@ -79,6 +81,7 @@ MAP_INTERRUPT:
 	POPA
 	RET
 
+;Print 4 bit number
 PRINT_NIBBLE:
 	AND AL, 0x0F
 	CMP AL, 10
@@ -93,6 +96,7 @@ DONEPRINTNIBBLE:
 	INT TEXT_SERVICE
 	RET
 
+;Print 8 bit number
 PRINT_BYTE:
 	PUSHA
 	MOV BX, AX
@@ -103,6 +107,7 @@ PRINT_BYTE:
 	POPA
 	RET
 
+;Print 16 bit number
 PRINT_WORD:
 	PUSHA
 	MOV BX, AX
@@ -113,6 +118,7 @@ PRINT_WORD:
 	POPA
 	RET
 
+;Save SS:SP
 SAVE_OLDSTACK:
 	MOV SI, PSTACKPTR
 	MOV AX, [CS:SI]
@@ -129,6 +135,7 @@ SAVE_OLDSTACK:
 	ADD WORD [CS:SI], 4	;Update the pstack pointer
 	RET
 
+;Restore SS:SP
 GET_OLDSTACK:
 	MOV SI, PSTACKPTR
 	MOV AX, [CS:SI]
@@ -145,6 +152,7 @@ GET_OLDSTACK:
 	SUB WORD [CS:SI], 4	;Update pstack pointer
 	RET
 
+;Prints the register status of the running process when the interrupt fired
 REGISTER_DUMP:
 	MOV AX, CS
 	MOV ES, AX
@@ -188,6 +196,7 @@ REGISTER_DUMP:
 	CALL PRINT
 	RET
 
+;Jump table for the interrupt stub
 JMP_TAB:
 	DW DOS_INT_0
 	DW DOS_INT_1
@@ -201,10 +210,11 @@ JMP_TAB:
 	DW DOS_INT_9
 	DW DOS_INT_10
 	DW DOS_INT_11
-	DW NOT_SUPPORTED_TRAP		;No need to clear the keyboard buffer
+	DW NOT_SUPPORTED_TRAP		;No need to clear the keyboard buffer so far
 	DW DOS_INT_13
 	TIMES 247 DW BAD_INT_TRAP
 
+;Called for interrupts that have no standard in the DOS API
 BAD_INT_TRAP:
 	MOV AX, CS
 	MOV ES, AX
@@ -214,6 +224,7 @@ BAD_INT_TRAP:
 	CLI
 	HLT
 
+;Called for interrupts that have no intentions of being implemented
 NOT_SUPPORTED_TRAP:
 	MOV AX, CS
 	MOV ES, AX
@@ -228,6 +239,7 @@ NOT_SUPPORTED_TRAP:
 %include "con.asm"
 %include "disk.asm"
 
+;Strings for dumping the registers
 STR_AX:	DB "AX=", 0
 STR_BX:	DB " BX=", 0
 STR_CX:	DB " CX=", 0
@@ -237,17 +249,24 @@ STR_DI:	DB " DI=", 0
 STR_BP:	DB " BP=", 0
 STR_CS: DB " EXEC=", 0
 STR_IP:	DB ":", 0
-
 STR_CR:	DB 13, 10, 0
 
+;Stack for calling other programs
 PSTACK:
 	TIMES 20 DW 0
-
 PSTACKPTR:
 	DW PSTACK
 
+;Current disk and path
+DOS_DISK:	DB 0
+CURRENT_PATH:	DB '\\'
+		TIMES 127 DB 0
+
+;General strings for general kernel notifications etc.
 PAYLOAD_STRING: DB "Kernel successfully entered.", 13, 10, 0
 INTERRUPT_TEST:	DB "Int 21h test call$", 13, 10, 0
 TRAP_STRING:	DB "Fatal: unknown interrupt option caught", 13, 10, 0
 STUB_STRING:	DB "Warning: stubbed function.", 13, 10, 0
 NOT_SUPPORTED:	DB "Unsupported int 21h call caught", 13, 10, 0
+
+__END:
