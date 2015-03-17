@@ -20,10 +20,11 @@ ENTRYPOINT:
 	MOV AX, SYS_DOS
 	CALL MAP_INTERRUPT
 
-KEYLOOP:
-	MOV AH, 3
+	MOV AH, DSK_RESET
 	INT SYS_DOS
-	JMP KEYLOOP
+	
+	MOV AH, 128
+	INT SYS_DOS
 
 	CLI
 	HLT
@@ -191,8 +192,18 @@ JMP_TAB:
 	DW DOS_INT_0
 	DW DOS_INT_1
 	DW DOS_INT_2
+	DW NOT_SUPPORTED_TRAP		;Serial IO is #deprecated for Dosile
 	DW NOT_SUPPORTED_TRAP
-	TIMES 253 DW BAD_INT_TRAP
+	DW NOT_SUPPORTED_TRAP		;Printers are #deprecated for Dosile
+	DW DOS_INT_6
+	DW DOS_INT_7
+	DW DOS_INT_8
+	DW DOS_INT_9
+	DW DOS_INT_10
+	DW DOS_INT_11
+	DW NOT_SUPPORTED_TRAP		;No need to clear the keyboard buffer
+	DW DOS_INT_13
+	TIMES 247 DW BAD_INT_TRAP
 
 BAD_INT_TRAP:
 	MOV AX, CS
@@ -215,6 +226,7 @@ NOT_SUPPORTED_TRAP:
 ;Area for importing outside code
 %include "exec.asm"
 %include "con.asm"
+%include "disk.asm"
 
 STR_AX:	DB "AX=", 0
 STR_BX:	DB " BX=", 0
@@ -235,6 +247,7 @@ PSTACKPTR:
 	DW PSTACK
 
 PAYLOAD_STRING: DB "Kernel successfully entered.", 13, 10, 0
-INTERRUPT_TEST:	DB "Int 21h test call", 13, 10, 0
+INTERRUPT_TEST:	DB "Int 21h test call$", 13, 10, 0
 TRAP_STRING:	DB "Fatal: unknown interrupt option caught", 13, 10, 0
+STUB_STRING:	DB "Warning: stubbed function.", 13, 10, 0
 NOT_SUPPORTED:	DB "Unsupported int 21h call caught", 13, 10, 0

@@ -1,6 +1,9 @@
 %ifndef REG_H
 %define REG_H 1
 
+%define REGISTER_ES	[SS:BP + 2]
+%define REGISTER_DS	[SS:BP + 4]
+%define REGISTER_SS	[SS:BP + 6]
 %define REGISTER_DI	[SS:BP + 2 + 6]
 %define REGISTER_SI	[SS:BP + 4 + 6]
 %define REGISTER_BP	[SS:BP + 6 + 6]

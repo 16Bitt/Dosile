@@ -17,6 +17,85 @@ DOS_INT_2:
 	INT TEXT_SERVICE
 	JMP END_INT
 
+;DOS 1.0+ direct console IO
+;dosile CON_IO
+DOS_INT_6:
+	MOV AX, REGISTER_DX
+	CMP AL, 0xFF
+	JE INT6_GETKEY
+	MOV AH, PUTCHAR
+	INT TEXT_SERVICE
+	JMP END_INT
+INT6_GETKEY:
+	MOV AH, READKEY_B
+	INT KEYB_SERVICE
+	JMP END_INT
+
+;DOS 1.0+ wait for keystroke with no echo
+;Dosile CON_READ_NE
+DOS_INT_7:
+	MOV AH, READKEY_B
+	INT KEYB_SERVICE
+	JMP END_INT
+
+;DOS 1.0+ wait for keystroke from stdin with no echo
+;Dosile STD_READ_NE
+DOS_INT_8:
+	MOV AH, READKEY_B
+	INT KEYB_SERVICE
+	JMP END_INT
+
+;DOS 1.0+ print string
+;Dosile STD_PRINTSTR
+DOS_INT_9:
+	MOV AX, REGISTER_DS
+	MOV ES, AX
+	MOV SI, REGISTER_DX
+	MOV AH, PUTCHAR
+INT9_LOOP:
+	LODSB
+	CMP AL, '$'
+	JZ INT9_DONE
+	INT TEXT_SERVICE
+	JMP INT9_LOOP
+INT9_DONE:
+	JMP END_INT
+
+;DOS 1.0+ read user input into buffer
+;Dosile STD_READ_BF
+DOS_INT_10:
+	MOV AX, REGISTER_DS
+	MOV ES, AX
+	MOV SI, REGISTER_DX
+	LODSB
+	MOV CX, AX
+	XOR CH, CH
+	LODSB
+	MOV DI, SI
+INT10_LOOP:
+	MOV AH, READKEY_B
+	INT KEYB_SERVICE
+	CALL EMITCHAR
+	STOSB
+	CMP AL, 13		;Check for carraige return
+	JZ INT10_DONE
+	LOOP INT10_LOOP
+INT10_DONE:
+	MOV SI, DX
+	LODSB			;Get the old buffer input length
+	SUB AL, CL		;Calculate how much was actually read
+	MOV DI, SI
+	STOSB			;Write it back
+	JMP END_INT
+
+;DOS 1.0+ get stdin status
+;Dosile STD_INPUT_ST
+DOS_INT_11:
+	MOV AX, REGISTER_AX
+	MOV AL, 0xFF		;Character is ready
+	MOV REGISTER_AX, AX
+	JMP END_INT
+
 EMITCHAR:
 	MOV AH, PUTCHAR
 	CMP AL, 13
