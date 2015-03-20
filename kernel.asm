@@ -4,6 +4,7 @@
 %include "bios.h"
 %include "sys_dos.h"
 %include "reg.h"
+%include "fat.h"
 
 ENTRYPOINT:
 	MOV AX, CS
@@ -19,12 +20,24 @@ ENTRYPOINT:
 	MOV DX, DOSILE_STUB
 	MOV AX, SYS_DOS
 	CALL MAP_INTERRUPT
-
-	MOV AH, DSK_RESET
-	INT SYS_DOS
 	
-	MOV AH, 128
+	MOV DL, BYTE [DRIVE_NUM]
+	MOV AH, DSK_SETDEFAULT
 	INT SYS_DOS
+
+	MOV SI, WORD [ROOT_ADDR]
+	MOV CX, 32
+PRINTROOT:
+	LODSW
+	CALL PRINT_WORD
+	LOOP PRINTROOT
+	
+	MOV SI, WORD [ROOT_ADDR]
+	MOV CX, WORD [NUM_ENTRIES]
+PRINTFILES:
+	CALL PRINT
+	ADD SI, DIR_SIZE
+	LOOP PRINTFILES
 
 	CLI
 	HLT
@@ -212,6 +225,7 @@ JMP_TAB:
 	DW DOS_INT_11
 	DW NOT_SUPPORTED_TRAP		;No need to clear the keyboard buffer so far
 	DW DOS_INT_13
+	DW DOS_INT_14
 	TIMES 247 DW BAD_INT_TRAP
 
 ;Called for interrupts that have no standard in the DOS API
@@ -238,6 +252,8 @@ NOT_SUPPORTED_TRAP:
 %include "exec.asm"
 %include "con.asm"
 %include "disk.asm"
+%include "sys/disk.asm"
+%include "sys/util.asm"
 
 ;Strings for dumping the registers
 STR_AX:	DB "AX=", 0

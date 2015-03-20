@@ -1,0 +1,196 @@
+%include "dpb.h"
+%include "fat.h"
+
+%define FAT_BUFFER	__END
+%define FAT_SIZE	(512 * 10)
+
+;Initializes the current disk for FAT initialization
+DOSILE_INIT_DISK:
+	PUSHA
+	MOV AX, CS
+	MOV ES, AX
+	MOV DS, AX			;Set all of the segments to access the bpb
+	XOR AX, AX
+	MOV AL, BYTE [NUM_FATS]
+	MUL WORD [SECTORS_PER_FAT]
+	MOV WORD [CLUSTER_START], AX
+	MOV AX, WORD [NUM_ENTRIES]
+	MOV BX, DIR_SIZE
+	MUL BX
+	DIV WORD [BYTES_PER_SECTOR]
+	ADD AX, WORD [NUM_HIDDEN]
+	ADD WORD [CLUSTER_START], AX	;Find the index of the first cluster
+	POPA
+	RET
+
+;Reads the 0th entry on the disk to 0x7C00 from disk DL
+DOSILE_GET_BPB:
+	PUSHA
+	XOR AX, AX
+	MOV ES, AX
+	MOV BX, 0x7C00
+	MOV AH, READSECTOR_B
+	MOV AL, 1
+	MOV CX, 1
+	MOV DH, 0
+	INT DISK_SERVICE
+	POPA
+	MOV BYTE [CS:DRIVE_NUM], DL
+	RET
+
+;Read an sector from current drive at LBA AX to ES:BX
+DOSILE_READ_SECTOR:
+	PUSHA
+	CALL DOSILE_LBA2CHS
+	MOV DL, BYTE [DRIVE_NUM]
+	MOV AL, 1
+	MOV CL, BYTE [SECTOR]
+	MOV CH, BYTE [TRACK]
+	MOV AH, READSECTOR_B
+	MOV DH, BYTE [HEAD]
+	INT DISK_SERVICE
+	JNC READSUCCESS
+	MOV SI, NOTICE_DISK_FAIL	;Bad sector read, Hang the machine
+	CALL PRINT
+	CLI
+	HLT
+READSUCCESS:
+	POPA
+	RET
+
+;Converts an LBA at AX to CHS written into RAM
+DOSILE_LBA2CHS:
+	PUSHA
+	XOR DX, DX
+	DIV WORD [SECTORS_PER_TRACK]
+	INC DL
+	;Save sector referenced by the LBA
+	MOV BYTE [SECTOR], DL
+	XOR DX, DX
+	DIV WORD [NUM_HEADS]
+	;Save head from LBA
+	MOV BYTE [HEAD], DL
+	;Save track from LBA
+	MOV BYTE [TRACK], AL
+	POPA
+	RET
+
+;Converts cluster in AX to LBA in AX
+DOSILE_CLUSTER2LBA:
+	DEC AX
+	DEC AX
+	MUL BYTE [SECTORS_PER_CLUSTER]
+	ADD AX, WORD [CLUSTER_START]
+	INC AX
+	RET
+
+;Read cluster AX into memory at ES:BX
+DOSILE_READ_CLUSTER:
+	PUSHA
+	CALL DOSILE_CLUSTER2LBA
+	XOR CX, CX
+	MOV CL, BYTE [SECTORS_PER_CLUSTER]
+READCLUSTER_LOOP:
+	CALL DOSILE_READ_SECTOR
+	INC AX
+	ADD BX, WORD [BYTES_PER_SECTOR]
+	LOOP READCLUSTER_LOOP
+	POPA
+	RET
+
+;Loads the FAT into the fat buffer in memory
+DOSILE_LOADFAT:
+	PUSHA
+	PUSH ES
+	PUSH DS
+	MOV AX, CS
+	MOV ES, AX
+	MOV DS, AX
+	MOV CX, WORD [SECTORS_PER_FAT]
+	MOV BX, FAT_BUFFER
+	MOV AX, WORD [NUM_HIDDEN]
+	INC AX
+LOADFAT_LOOP:
+	CALL DOSILE_READ_SECTOR
+	ADD BX, WORD [BYTES_PER_SECTOR]
+	INC AX
+	LOOP LOADFAT_LOOP
+	MOV WORD [ROOT_ADDR], BX
+	POP DS
+	POP ES
+	POPA
+	RET
+
+;Loads the root into memory at ROOT_ADDR
+DOSILE_LOADROOT:
+	PUSHA
+	PUSH ES
+	PUSH DS
+	MOV AX, CS
+	MOV ES, AX
+	MOV DS, AX
+	MOV AX, WORD [NUM_ENTRIES]
+	MOV BX, DIR_SIZE
+	MUL BX
+	DIV WORD [BYTES_PER_SECTOR]
+	MOV CX, AX
+	MOV AX, WORD [DIR_START]
+	INC AX
+	MOV BX, WORD [ROOT_ADDR]
+LOADROOT_LOOP:
+	CALL DOSILE_READ_SECTOR
+	ADD BX, WORD [BYTES_PER_SECTOR]
+	INC AX
+	LOOP LOADROOT_LOOP
+	POP DS
+	POP ES
+	POPA
+	RET
+
+;Get the next cluster for a 12 bit FAT from cluster AX
+DOSILE_NEXT_CLUSTER12:
+	PUSH SI
+	PUSH CX
+	CMP AX, 0xFFE
+	JGE END_CLUSTER12
+	MOV CX, AX
+	SHR AX, 1
+	ADD AX, CX
+	ADD AX, FAT_BUFFER
+	MOV SI, AX
+	MOV AX, [CS:SI]
+DONE_NEXTCLUSTER12:
+	POP CX
+	POP SI
+	RET
+END_CLUSTER12:
+	MOV AX, 0xFFFF
+	JMP DONE_NEXTCLUSTER12
+
+;Gets the current drive letter and prints it to the screen with a :>
+DOSILE_PRINT_DISK:
+	PUSHA
+	MOV AH, PUTCHAR
+	MOV AL, BYTE [DRIVE_NUM]
+	ADD AL, 'A'
+	INT TEXT_SERVICE
+	MOV AL, ':'
+	INT TEXT_SERVICE
+	MOV AL, '>'
+	INT TEXT_SERVICE
+	POPA
+	RET
+
+;These are all the basic components of FAT disk access in real mode
+TRACK:		DB 0
+HEAD:		DB 0
+SECTOR:		DB 0
+CLUSTER_START:	DW 0
+DIR_START:	DW 0
+ROOT_ADDR:	DW 0
+
+;Strings for this piece of the kernel
+NOTICE_CLUSTER:	DB " first cluster at    0x", 0
+NOTICE_SPF:	DB " sectors per fat     0x", 0
+NOTICE_SPC:	DB " sectors per cluster 0x", 0
+NOTICE_DISK_FAIL:	DB "Dosile failed to read sector from the current disk", 0

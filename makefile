@@ -1,4 +1,4 @@
-ASFLAGS	= -fbin -Iinclude/ -Icompat/
+ASFLAGS	= -fbin -Iinclude/ -Icompat/ -I.
 
 
 SOURCES	= boot.bin kernel.bin
@@ -12,6 +12,7 @@ bootsector: floppy.img $(SOURCES)
 	dd conv=notrunc if=boot.bin of=floppy.img bs=1 seek=64 count=448
 	mcopy -o -i floppy.img boot.asm ::/
 	mcopy -o -i floppy.img kernel.bin ::/DOSILE.SYS
+	mcopy -o -i floppy.img user/* ::/
 
 clean:
 	-rm *.bin
