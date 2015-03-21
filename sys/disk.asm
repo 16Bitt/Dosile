@@ -181,6 +181,30 @@ DOSILE_PRINT_DISK:
 	POPA
 	RET
 
+;Attempts to find file ES:DI in root directory
+;Returns AX=directory entry address, or 0 if not found
+DOSILE_FINDFILE:
+	PUSHA
+	MOV CX, WORD [NUM_ENTRIES]
+	MOV SI, WORD [ROOT_ADDR]
+FINDFILE_LOOP:
+	PUSH CX
+	CALL DOSILE_STRNCMP
+	POP CX
+	OR AX, AX
+	JZ FINDFILE_FOUND
+	LOOP FINDFILE_LOOP
+	MOV WORD [ROOT_FILE], 0
+	JMP FINDFILE_DONE
+FINDFILE_FOUND:
+	MOV WORD [ROOT_FILE], SI
+FINDFILE_DONE:
+	POPA
+	MOV AX, WORD [ROOT_FILE]
+	RET
+
+ROOT_FILE:	DW 0
+
 ;These are all the basic components of FAT disk access in real mode
 TRACK:		DB 0
 HEAD:		DB 0

@@ -68,6 +68,21 @@ CSUB_LOOP_END:
 	POPA
 	RET
 
+;Compares string ES:DI to string ES:SI for CX bytes
+;Return AX =/= 0 if strings are not equal
+DOSILE_STRNCMP:
+	PUSH SI
+	PUSH DI
+	PUSH CX
+STRNCMP_LOOP:
+	CMPSB
+	LOOPE STRNCMP_LOOP
+	MOV AX, CX
+	POP CX
+	POP DI
+	POP SI
+	RET
+
 ;Converts an 8.3 string to an 11 character FAT name at ES:SI
 ;ASSUMES THE STRING IS IN A 12 CHARACTER BUFFER
 DOSILE_TOFAT:
